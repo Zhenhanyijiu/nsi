@@ -47,12 +47,15 @@ if [ ! -f "../mPSI/thirdparty/linux/ntl-11.4.3.tar.gz" ];then
     wget https://libntl.org/ntl-11.4.3.tar.gz
     cd -
 fi
-# if [ ! -f "../mPSI/thirdparty/linux/ntl-11.4.3.tar.gz" ];then
-# cd ../thirdparty/linux/ntl/src/
+# echo "编译xxhash==============>"
+# cd ../mPSI/libPaXoS/xxHash 
+# g++ -g -fPIC -shared -c ./*.c
+# ar rc libxxhash.a ./*.o
+# cd -
+
+if [ ! -f "../mPSI/thirdparty/linux/ntl-11.4.3/src/libntl.a" ];then
 cd ../mPSI/thirdparty/linux/
-# wget https://libntl.org/ntl-11.4.3.tar.gz
 tar zxvf ntl-11.4.3.tar.gz
-# mv ntl-11.4.3 ntl
 cd ntl-11.4.3/src/
 ./configure PREFIX=`pwd` GMP_PREFIX="${CURRENT_PATH}/../libdev"
 make -j4
@@ -64,7 +67,7 @@ cp -r lib/libntl.a .
 # bash ntl.get
 # cd - & cd ../../psi3_bin/
 cd ${CURRENT_PATH}
-# fi
+fi
 
 echo "========pwds start==========="
 pwd
@@ -74,11 +77,20 @@ echo "========pwds end=============="
 if [ -f "tpsi" ];then
     rm -rf tpsi
 fi
-
+#将第三方库的main文件去掉
+if [ -f "../mPSI/frontend/main.cpp" ];then
+    if [ ! -f "../mPSI/frontend/main.cpp-bak" ];then
+        # rm -rf ../mPSI/frontend/main.cpp-bak
+        mv ../mPSI/frontend/main.cpp ../mPSI/frontend/main.cpp-bak
+    else
+        rm -rf ../mPSI/frontend/main.cpp
+    fi
+fi
 g++ -O3 -DNDEBUG -O2 -g -O0 -ffunction-sections -Wall -Wfatal-errors \
 -maes -msse2 -msse3 -msse4.1 -mpclmul -std=c++11 -pthread \
 -DNO_INTEL_ASM_SHA1=1 -DTPSI_TEST \
--I . \
+-I ../src \
+-I ../mPSI/frontend \
 -I ../mPSI/cryptoTools \
 -I ../mPSI/thirdparty/linux/boost/includes \
 -I ../libdev/include \
@@ -100,7 +112,8 @@ g++ -O3 -DNDEBUG -O2 -g -O0 -ffunction-sections -Wall -Wfatal-errors \
 ../mPSI/libOPRF/Hashing/*.cpp \
 ../mPSI/libPaXoS/ObliviousDictionary.cpp \
 ../mPSI/libPaXoS/gf2e_mat_solve.cpp \
-./*.cpp \
+../src/*.cpp \
+../mPSI/frontend/*.cpp \
 ../mPSI/libPaXoS/xxHash/libxxhash.a \
 ../libdev/lib/liblinbox.a \
 ../libdev/lib/libgivaro.a \

@@ -28,7 +28,7 @@ def compile_miracl_xxhash_boost():
 
 # cython编译
 BIN_PATH = "../tpsi_bin_bak"
-BIN_PATH = "../tpsi_bin"
+BIN_PATH = "../src"
 
 
 def start_setup():
@@ -47,19 +47,25 @@ def start_setup():
     # liboprf
     source_files += get_source_files("../mPSI/libOPRF/OPPRF")
     source_files += get_source_files("../mPSI/libOPRF/Hashing")
-    # psi3
-    source_files += get_source_files(BIN_PATH)
     # libPaXoS
     source_files += [
         "../mPSI/libPaXoS/ObliviousDictionary.cpp",
         "../mPSI/libPaXoS/gf2e_mat_solve.cpp",
     ]
-
+    # tpsi_src
+    source_files += get_source_files(BIN_PATH)
+    # mPSI
+    tmp_cpp = get_source_files('../mPSI/frontend')
+    # if "../mPSI/frontend/main.cpp" in tmp_cpp:
+    frontend_files = [x for x in tmp_cpp if x != "../mPSI/frontend/main.cpp"]
+    print('======mpsi frontend files:', frontend_files)
+    source_files = source_files+frontend_files
     LINBOX_DEV_PATH = "../libdev"
     # 获取头文件路径路径，-I
     #   '../thirdparty/linux/ntl/include',
     include_dirs = [
         BIN_PATH,
+        '../mPSI/frontend',
         "../mPSI/cryptoTools",
         "../mPSI/thirdparty/linux/boost/includes",
         "../mPSI/libOPRF",
