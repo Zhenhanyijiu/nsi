@@ -54,19 +54,23 @@ fi
 # cd -
 
 if [ ! -f "../mPSI/thirdparty/linux/ntl-11.4.3/src/libntl.a" ];then
-cd ../mPSI/thirdparty/linux/
-tar zxvf ntl-11.4.3.tar.gz
-cd ntl-11.4.3/src/
-./configure PREFIX=`pwd` GMP_PREFIX="${CURRENT_PATH}/../libdev"
-make -j4
-make install
-cp -r lib/libntl.a .
-# make clean
-# make -j4 ./ntl.a 
-# mv ./ntl.a ./libntl.a
-# bash ntl.get
-# cd - & cd ../../psi3_bin/
-cd ${CURRENT_PATH}
+    cd ../mPSI/thirdparty/linux/
+    tar zxvf ntl-11.4.3.tar.gz
+    cd ntl-11.4.3/src/
+    #wsl用这里
+    # ./configure PREFIX=`pwd` GMP_PREFIX="${CURRENT_PATH}/../libdev"
+    make clean
+    #docker用这里
+    ./configure PREFIX=`pwd`
+    make -j4
+    make install
+    cp -r lib/libntl.a .
+    # make clean
+    # make -j4 ./ntl.a 
+    # mv ./ntl.a ./libntl.a
+    # bash ntl.get
+    # cd - & cd ../../psi3_bin/
+    cd ${CURRENT_PATH}
 fi
 
 echo "========pwds start==========="
