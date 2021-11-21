@@ -90,9 +90,11 @@ if [ -f "../mPSI/frontend/main.cpp" ];then
         rm -rf ../mPSI/frontend/main.cpp
     fi
 fi
+# -DTPSI_TEST
 g++ -O3 -DNDEBUG -O2 -g -O0 -ffunction-sections -Wall -Wfatal-errors \
 -maes -msse2 -msse3 -msse4.1 -mpclmul -std=c++11 -pthread \
--DNO_INTEL_ASM_SHA1=1 -DTPSI_TEST \
+-DNO_INTEL_ASM_SHA1=1 -DNP99_TEST \
+-I ../mPSI \
 -I ../src \
 -I ../mPSI/frontend \
 -I ../mPSI/cryptoTools \
