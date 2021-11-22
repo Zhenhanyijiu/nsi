@@ -11,17 +11,17 @@
 using namespace std;
 namespace osuCrypto
 {
-#ifdef ENABLE_RELIC
-    using Curve = REllipticCurve;
-    using Point = REccPoint;
-    using Brick = REccPoint;
-    using Number = REccNumber;
-#else
-    using Curve = EllipticCurve;
-    using Point = EccPoint;
-    using Brick = EccBrick;
-    using Number = EccNumber;
-#endif
+    // #ifdef ENABLE_RELIC
+    //     using Curve = REllipticCurve;
+    //     using Point = REccPoint;
+    //     using Brick = REccPoint;
+    //     using Number = REccNumber;
+    // #else
+    // using Curve = EllipticCurve;
+    // using Point = EccPoint;
+    // using Brick = EccBrick;
+    // using Number = EccNumber;
+    // #endif
     //NP-OT-Sender
     class NaorPinkasSender
     {
@@ -31,10 +31,10 @@ namespace osuCrypto
         u32 numThreads;
         u32 nSndVals;
         PRNG prng;
-        Curve *curve;
-        Number *alphaPtr;
+        EllipticCurve *curve;
+        EccNumber *alphaPtr;
         block R;
-        std::vector<Point> pC;
+        std::vector<EccPoint> pC;
         vector<u8> pubPCParamBuf;
 
     public:
@@ -62,9 +62,9 @@ namespace osuCrypto
         u32 numThreads;
         u32 nSndVals;
         PRNG prng;
-        Curve *curve;
-        std::vector<Point> pC;
-        vector<Number> sks;
+        EllipticCurve *curve;
+        std::vector<EccPoint> pC;
+        vector<EccNumber> sks;
         vector<u8> pk0sBuf;
 
     public:
