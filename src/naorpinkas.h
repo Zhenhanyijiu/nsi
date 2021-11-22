@@ -31,11 +31,13 @@ namespace osuCrypto
         u32 numThreads;
         u32 nSndVals;
         PRNG prng;
-        EllipticCurve *curve;
-        EccNumber *alphaPtr;
+        // EllipticCurve *curve;
+        // EccNumber *alphaPtr;
+        vector<u8> alphaPtr;
         block R;
-        std::vector<EccPoint> pC;
-        vector<u8> pubPCParamBuf;
+        // std::vector<EccPoint> pC;
+        // vector<vector<u8>> pC;
+        vector<u8> pubPCParamBuf; //A,C param
 
     public:
         NaorPinkasSender();
@@ -62,9 +64,11 @@ namespace osuCrypto
         u32 numThreads;
         u32 nSndVals;
         PRNG prng;
-        EllipticCurve *curve;
-        std::vector<EccPoint> pC;
-        vector<EccNumber> sks;
+        // EllipticCurve *curve;
+        // std::vector<EccPoint> pC;
+        std::vector<u8> pC;
+        // vector<EccNumber> sks;
+        vector<vector<u8>> sks;
         vector<u8> pk0sBuf;
 
     public:

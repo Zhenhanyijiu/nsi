@@ -23,8 +23,8 @@ namespace osuCrypto
     }
     NaorPinkasSender::~NaorPinkasSender()
     {
-        delete this->alphaPtr;
-        delete this->curve;
+        // delete this->alphaPtr;
+        // delete this->curve;
     }
     int NaorPinkasSender::init(PRNG &rng, const u32 otMsgPairSize,
                                const u32 otPerMsgBitSize)
@@ -36,37 +36,54 @@ namespace osuCrypto
         this->numThreads = 1, this->nSndVals = 2;
         block seed = rng.get<block>();
         this->prng.SetSeed(seed);
+        seed = rng.get<block>();
         // Ecc2mParams params = k233;
-        this->curve = new EllipticCurve(k233, seed);
+        EllipticCurve curve(k233, seed);
         //alpha也可以定义为长度为1的vector，此时就不需要指针了
         // this->alphaPtr = new EccNumber(*(this->curve), this->prng); //*(this->curve)
-        this->alphaPtr = new EccNumber(*(this->curve)); //*(this->curve)
-        this->alphaPtr->randomize(rng);
+        EccNumber alpha(curve); //*(this->curve)
+        alpha.randomize(rng);
+        cout << "===>>sender init,alphaPtr:" << alpha << endl;
+        printf("===>>alphaPtr len:", alpha.sizeBytes());
+        // seed = rng.get<block>();
+        this->alphaPtr.resize(alpha.sizeBytes());
+        // memcpy(this->alphaPtr.data(), alpha.toBytes(), alpha.sizeBytes());
+        alpha.toBytes(this->alphaPtr.data());
         this->R = this->prng.get<block>();
-        this->pC.reserve(nSndVals);
+        // this->pC.resize(nSndVals);
         return 0;
     }
 
     int NaorPinkasSender::genPublicParam(u8 **pubParamBuf, u64 *pubParamBufByteSize)
     {
-        const EccPoint g = this->curve->getGenerator();
+        block seed = this->prng.get<block>();
+        // seed = rng.get<block>();
+        // Ecc2mParams params = k233;
+        // EccPoint pk(*curve1), pk1(*curve1), pk2(*curve);
+        EllipticCurve curve(k233, seed);
+        const EccPoint g = curve.getGenerator();
         u64 fieldElementSize = g.sizeBytes();
         printf("===>>npsender fieldElementSize:%ld\n", fieldElementSize);
         u64 byteSize = fieldElementSize * this->nSndVals;
+        vector<EccPoint> pC;
+        pC.reserve(this->nSndVals);
         pubPCParamBuf.resize(byteSize);
-        this->pC.emplace_back(*(this->curve));
-        this->pC[0] = g * (*this->alphaPtr); // A=alpha*G
-        this->pC[0].toBytes(pubPCParamBuf.data());
-        EccNumber tmp(*(this->curve));
+        pC.emplace_back(curve);
+        EccNumber alpha(curve);
+        alpha.fromBytes(this->alphaPtr.data());
+        pC[0] = g * alpha; // A=alpha*G
+        cout << "====pC[0]==A:" << pC[0] << endl;
+        pC[0].toBytes(pubPCParamBuf.data());
+        EccNumber tmp(curve);
         for (u64 u = 1; u < this->nSndVals; u++)
         {
-            this->pC.emplace_back(*(this->curve));
+            pC.emplace_back(curve);
             tmp.randomize(this->prng);
-            this->pC[u] = g * tmp; // C=tmp*G
-            this->pC[u].toBytes(pubPCParamBuf.data() + u * fieldElementSize);
+            pC[u] = g * tmp; // C=tmp*G
+            pC[u].toBytes(pubPCParamBuf.data() + u * fieldElementSize);
         }
-        cout << "sender >>>>>pc[0]:" << this->pC[0] << endl;
-        cout << "sender >>>>>pc[1]:" << this->pC[1] << endl;
+        // cout << "sender >>>>>pc[0]:" << this->pC[0] << endl;
+        // cout << "sender >>>>>pc[1]:" << this->pC[1] << endl;
         *pubParamBuf = pubPCParamBuf.data();
         if (*pubParamBuf == nullptr)
         {
@@ -83,7 +100,12 @@ namespace osuCrypto
     int NaorPinkasSender::getEncKey(u8 *pk0Buf, const u64 pk0BufSize,
                                     vector<array<block, 2>> &encKeys)
     {
-        const EccPoint g = this->curve->getGenerator();
+        block seed = this->prng.get<block>();
+        // seed = rng.get<block>();
+        // Ecc2mParams params = k233;
+        // EccPoint pk(*curve1), pk1(*curve1), pk2(*curve);
+        EllipticCurve curve(k233, seed);
+        const EccPoint g = curve.getGenerator();
         u64 fieldElementSize = g.sizeBytes();
         printf("===>>npsender get G,fieldElementSize：%ld\n", fieldElementSize);
         // u64 encKeySize = encKeys.size();
@@ -95,14 +117,18 @@ namespace osuCrypto
         }
         encKeys.resize(encKeySize);
         // u64 pk0Num = pk0BufSize / fieldElementSize;
-        EccPoint pPK0(*(this->curve)), PK0a(*(this->curve)), fetmp(*(this->curve));
+        EccPoint pPK0(curve), PK0a(curve), fetmp(curve);
         // Number alpha2(curve, alpha);
         std::vector<u8> hashInBuff(fieldElementSize); // 33字节
         //todo:这里的randomoracle的输出长度是否固定？？？
         SHA1 sha; // 16字节
         u8 output_tmp[20];
         // printf("===============>>before for\n");
-        EccNumber alpha2(*(this->curve), *(this->alphaPtr));
+        // EccNumber alpha2(*(this->curve), *(this->alphaPtr));
+        EccNumber alpha(curve);
+        alpha.fromBytes(this->alphaPtr.data());
+        EccPoint C(curve);
+        C.fromBytes(this->pubPCParamBuf.data() + fieldElementSize);
         for (int i = 0; i < encKeySize; i++)
         {
             //对于第i对消息，获取pPK0==k*G
@@ -116,7 +142,8 @@ namespace osuCrypto
             cout << "===>>sender pPK0:" << pPK0 << endl;
             //计算a*pPK0
             // PK0a = pPK0 * (*(this->alphaPtr));
-            PK0a = pPK0 * alpha2;
+            PK0a = pPK0 * alpha;
+            cout << "===>>sender PK0a:" << PK0a << endl;
             // printf("----------1\n");
             //将点转化成压缩形式
             PK0a.toBytes(hashInBuff.data()); // PK0a=(x,y),取x
@@ -129,7 +156,8 @@ namespace osuCrypto
             sha.Final(output_tmp);
             encKeys[i][0] = *((block *)output_tmp);
             //处理另一个Ca/PK0a
-            fetmp = this->pC[1] * (*(this->alphaPtr)) - PK0a;
+            fetmp = C * alpha - PK0a;
+            cout << "===>>sender fetmp:" << fetmp << endl;
             fetmp.toBytes(hashInBuff.data());
             sha.Reset();
             sha.Update((u8 *)&i, sizeof(i));
@@ -170,7 +198,7 @@ namespace osuCrypto
     NaorPinkasReceiver::NaorPinkasReceiver() {}
     NaorPinkasReceiver::~NaorPinkasReceiver()
     {
-        delete this->curve;
+        // delete this->curve;
     }
     int NaorPinkasReceiver::init(PRNG &rng, const u32 otMsgPairSize,
                                  const u32 otPerMsgBitSize)
@@ -184,9 +212,9 @@ namespace osuCrypto
         // block seed = rng.get<block>();
         // this->prng.SetSeed(seed);
         // Ecc2mParams params = k233;
-        this->curve = new EllipticCurve(k233, seed);
+        // this->curve = new EllipticCurve(k233, seed);
 
-        this->pC.reserve(this->nSndVals);
+        // this->pC.reserve(this->nSndVals);
         return 0;
     }
     int NaorPinkasReceiver::genPK0(u8 *pubParamBuf, const u64 pubParamBufByteSize,
@@ -200,38 +228,50 @@ namespace osuCrypto
             print_error(-4);
             return -4;
         }
-        const EccPoint g = this->curve->getGenerator();
+        block seed = this->prng.get<block>();
+        // seed = rng.get<block>();
+        // Ecc2mParams params = k233;
+        // EccPoint pk(*curve1), pk1(*curve1), pk2(*curve);
+        EllipticCurve curve(k233, seed);
+        const EccPoint g = curve.getGenerator();
         u64 fieldElementSize = g.sizeBytes();
         //恢复对方发来的A,C两个公钥点
-        for (auto u = 0; u < this->nSndVals; u++)
-        {
-            this->pC.emplace_back(*(this->curve));
-            this->pC[u].fromBytes(pubParamBuf + u * fieldElementSize);
-        }
-        cout << "receiver >>>>>pc[0]:" << this->pC[0] << endl;
-        cout << "receiver >>>>>pc[1]:" << this->pC[1] << endl;
-        this->sks.reserve(otMsgPairSize);
+        this->pC.resize(fieldElementSize * this->nSndVals);
+        memcpy(this->pC.data(), pubParamBuf, pubParamBufByteSize);
+        EccPoint A(curve), C(curve);
+        A.fromBytes(pubParamBuf + 0 * fieldElementSize);
+        C.fromBytes(pubParamBuf + 1 * fieldElementSize);
+        // for (auto u = 0; u < this->nSndVals; u++)
+        // {
+        //     this->pC[u].fromBytes(pubParamBuf + u * fieldElementSize);
+        // }
+        // cout << "receiver >>>>>pc[0]:" << this->pC[0] << endl;
+        // cout << "receiver >>>>>pc[1]:" << this->pC[1] << endl;
+        this->sks.resize(otMsgPairSize);
         vector<EccPoint> pks_sk;
         pks_sk.reserve(otMsgPairSize);
         *pk0BufSize = fieldElementSize * otMsgPairSize;
         this->pk0sBuf.resize(*pk0BufSize);
         *pk0Buf_out = this->pk0sBuf.data();
-        EccBrick bg(g);               //基点G
-        EccPoint pk0(*(this->curve)); //Ar
+        EccBrick bg(g);      //基点G
+        EccPoint pk0(curve); //Ar
         // EccPoint pPK0(*(this->curve)); //Ar
         u64 offset = 0;
         for (int i = 0; i < otMsgPairSize; i++)
         {
-            this->sks.emplace_back(*(this->curve));
+            EccNumber tmp_sk(curve);
+            tmp_sk.randomize(prng);
+            // this->sks.emplace_back(*(this->curve));
             // k1,k2,...,kk
-            this->sks[i].randomize(prng);
-            pks_sk.emplace_back(*(this->curve)); //每次初始化一个ECCPoint
-            pks_sk[i] = bg * this->sks[i];       //生成对应的公钥g^k
+            this->sks[i].resize(tmp_sk.sizeBytes());
+            tmp_sk.toBytes(this->sks[i].data());
+            pks_sk.emplace_back(curve); //每次初始化一个ECCPoint
+            pks_sk[i] = bg * tmp_sk;    //生成对应的公钥g^k
             //根据选择0 or 1，计算A0
             u8 r = choices[i];
             if (r != 0)
             {
-                pk0 = this->pC[1] - pks_sk[i];
+                pk0 = C - pks_sk[i];
             }
             else
             {
@@ -257,19 +297,34 @@ namespace osuCrypto
         // }
         decKey.resize(this->otMsgPairSize);
         // resuse this space, not the data of PK0...
-        EccPoint PK0(*(this->curve));
+        block seed = this->prng.get<block>();
+        // seed = rng.get<block>();
+        // Ecc2mParams params = k233;
+        // EccPoint pk(*curve1), pk1(*curve1), pk2(*curve);
+        EllipticCurve curve(k233, seed);
+        const EccPoint g = curve.getGenerator();
+        EccPoint PK0(curve);
         EccPoint &gka = PK0;
-        u64 fieldElementSize = PK0.sizeBytes();
+        u64 fieldElementSize = g.sizeBytes();
         cout << "fieldElementSize:" << fieldElementSize << endl;
         SHA1 sha; //otPerMsgBitSize
         vector<u8> buff(fieldElementSize);
-        EccBrick ga(pC[0]); // bc==A==g^a
+        // EccBrick ga(pC[0]); // bc==A==g^a
+        EccPoint A(curve), C(curve);
+        A.fromBytes(this->pC.data() + 0 * fieldElementSize);
+        cout << "============A:" << A << endl;
         u8 output_tmp[20];
         for (int i = 0; i < this->otMsgPairSize; i++)
         {
+            EccNumber tmp_sk(curve);
+            tmp_sk.fromBytes(this->sks[i].data());
             // now compute g ^(a * k) = (g^a)^k=A^k
-            gka = ga * this->sks[i]; //计算恢复消息的
+            gka = A * tmp_sk; //计算恢复消息的
             gka.toBytes(buff.data());
+            if (i == 0)
+            {
+                cout << "====>>recv gka:" << gka << endl;
+            }
             //计算hash，text=i||gka||R作为hash输入
             sha.Reset();
             sha.Update((u8 *)&i, sizeof(i));
@@ -313,6 +368,40 @@ namespace oc = osuCrypto;
 using namespace oc;
 int main(int argc, char **argv)
 {
+#ifdef ECC_TEST
+    int nn = atoi(argv[1]);
+    PRNG rng1(toBlock(0x666666));
+    block seed = rng1.get<block>();
+    block seed1 = rng1.get<block>();
+    EllipticCurve *curve1 = new EllipticCurve(k233, seed1);
+    EllipticCurve *curve = new EllipticCurve(k233, seed);
+    const EccPoint g = curve->getGenerator();
+    //alpha也可以定义为长度为1的vector，此时就不需要指针了
+    // this->alphaPtr = new EccNumber(*(this->curve), this->prng); //*(this->curve)
+    EccNumber *alphaPtr = new EccNumber(*(curve)); //*(this->curve)
+    alphaPtr->randomize(rng1);
+    EccPoint pk(*curve1), pk1(*curve1), pk2(*curve);
+    pk = g * (*alphaPtr);
+    for (int i = 0; i < nn; i++)
+    {
+
+        alphaPtr->randomize(rng1);
+        pk2 = pk * (*alphaPtr);
+        cout << "pk :==" << pk2 << endl;
+        cout << "alphaPtr :==" << alphaPtr << endl;
+        cout << ">>>>len:" << alphaPtr->sizeBytes() << endl;
+        u8 buf[64];
+        pk2.toBytes(buf);
+        pk1.fromBytes(buf);
+        cout << "pk1:==" << pk1 << endl;
+        pk = pk2;
+    }
+    delete alphaPtr;
+    // delete curve1;
+    // delete curve;
+    return 0;
+
+#endif
     if (argc != 2)
     {
         printf("========error!!! argc!=2\n");
