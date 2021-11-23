@@ -29,86 +29,66 @@ namespace osuCrypto
     int NaorPinkasSender::init(PRNG &rng, const u32 otMsgPairSize,
                                const u32 otPerMsgBitSize)
     {
+        printf("========sender init==========\n");
         this->otMsgPairSize = otMsgPairSize;
         this->otPerMsgBitSize = otPerMsgBitSize;
-        // cout << "====otMsgPairSize  :" << this->otMsgPairSize << endl;
-        // cout << "====otPerMsgBitSize:" << this->otPerMsgBitSize << endl;
-        this->numThreads = 1, this->nSndVals = 2;
         block seed = rng.get<block>();
         this->prng.SetSeed(seed);
-        seed = rng.get<block>();
-        // Ecc2mParams params = k233;
+        seed = this->prng.get<block>();
         EllipticCurve curve(k233, seed);
-        //alpha也可以定义为长度为1的vector，此时就不需要指针了
-        // this->alphaPtr = new EccNumber(*(this->curve), this->prng); //*(this->curve)
-        EccNumber alpha(curve); //*(this->curve)
-        alpha.randomize(rng);
-        cout << "===>>sender init,alphaPtr:" << alpha << endl;
-        printf("===>>alphaPtr len:", alpha.sizeBytes());
-        // seed = rng.get<block>();
+        EccNumber alpha(curve);
+        alpha.randomize(this->prng);
+        cout << "[sender]我是a：" << alpha << endl;
         this->alphaPtr.resize(alpha.sizeBytes());
-        // memcpy(this->alphaPtr.data(), alpha.toBytes(), alpha.sizeBytes());
         alpha.toBytes(this->alphaPtr.data());
-        this->R = this->prng.get<block>();
-        // this->pC.resize(nSndVals);
         return 0;
     }
 
     int NaorPinkasSender::genPublicParam(u8 **pubParamBuf, u64 *pubParamBufByteSize)
     {
+        printf("========sender genPublicParam==========\n");
         block seed = this->prng.get<block>();
-        // seed = rng.get<block>();
-        // Ecc2mParams params = k233;
-        // EccPoint pk(*curve1), pk1(*curve1), pk2(*curve);
         EllipticCurve curve(k233, seed);
         const EccPoint g = curve.getGenerator();
         u64 fieldElementSize = g.sizeBytes();
-        printf("===>>npsender fieldElementSize:%ld\n", fieldElementSize);
-        u64 byteSize = fieldElementSize * this->nSndVals;
+        printf("[sender]fieldElementSize:%ld\n", fieldElementSize);
+        cout << "[sender]G:" << g << endl;
+        u64 byteSize = fieldElementSize * 2;
         vector<EccPoint> pC;
-        pC.reserve(this->nSndVals);
-        pubPCParamBuf.resize(byteSize);
+        pC.reserve(2);
+        this->pubPCParamBuf.resize(byteSize);
         pC.emplace_back(curve);
         EccNumber alpha(curve);
         alpha.fromBytes(this->alphaPtr.data());
         pC[0] = g * alpha; // A=alpha*G
-        cout << "====pC[0]==A:" << pC[0] << endl;
-        pC[0].toBytes(pubPCParamBuf.data());
+        cout << "[sender]A=g^a:" << pC[0] << endl;
+        pC[0].toBytes(this->pubPCParamBuf.data());
         EccNumber tmp(curve);
-        for (u64 u = 1; u < this->nSndVals; u++)
+        for (u64 u = 1; u < 2; u++)
         {
             pC.emplace_back(curve);
             tmp.randomize(this->prng);
             pC[u] = g * tmp; // C=tmp*G
-            pC[u].toBytes(pubPCParamBuf.data() + u * fieldElementSize);
+            cout << "[sender]C=g^c:" << pC[u] << endl;
+            pC[u].toBytes(this->pubPCParamBuf.data() + u * fieldElementSize);
         }
-        // cout << "sender >>>>>pc[0]:" << this->pC[0] << endl;
-        // cout << "sender >>>>>pc[1]:" << this->pC[1] << endl;
-        *pubParamBuf = pubPCParamBuf.data();
+        *pubParamBuf = this->pubPCParamBuf.data();
         if (*pubParamBuf == nullptr)
         {
             print_error(-1);
             return -1;
         }
         *pubParamBufByteSize = byteSize;
-        // vector<u8> sendBuff(nSndVals * fieldElementSize);
-        // Number alpha2(curve, *alphaPtr);
-        // std::cout << "alphaPtr:" << *alphaPtr << endl;
-        // std::cout << "alpha2  :" << alpha2 << endl;
         return 0;
     }
     int NaorPinkasSender::getEncKey(u8 *pk0Buf, const u64 pk0BufSize,
                                     vector<array<block, 2>> &encKeys)
     {
+        printf("========sender getEncKey==========\n");
         block seed = this->prng.get<block>();
-        // seed = rng.get<block>();
-        // Ecc2mParams params = k233;
-        // EccPoint pk(*curve1), pk1(*curve1), pk2(*curve);
         EllipticCurve curve(k233, seed);
         const EccPoint g = curve.getGenerator();
         u64 fieldElementSize = g.sizeBytes();
-        printf("===>>npsender get G,fieldElementSize：%ld\n", fieldElementSize);
-        // u64 encKeySize = encKeys.size();
         u64 encKeySize = this->otMsgPairSize;
         if (pk0Buf == nullptr || pk0BufSize != fieldElementSize * encKeySize)
         {
@@ -133,18 +113,17 @@ namespace osuCrypto
         {
             //对于第i对消息，获取pPK0==k*G
             pPK0.fromBytes(pk0Buf + i * fieldElementSize);
-            // for (int j = 0; j < 31; j++)
-            // {
-            //     printf("=====>>>%x", pk0Buf[j]);
-            // }
-            // printf("----------0\n");
-            // cout << "====alpha:" << *(this->alphaPtr) << endl;
-            cout << "===>>sender pPK0:" << pPK0 << endl;
+            if (i == 0)
+            {
+                cout << "[sender]pk0:" << pPK0 << endl;
+                cout << "[sender]a:" << alpha << endl;
+            }
             //计算a*pPK0
-            // PK0a = pPK0 * (*(this->alphaPtr));
             PK0a = pPK0 * alpha;
-            cout << "===>>sender PK0a:" << PK0a << endl;
-            // printf("----------1\n");
+            if (i == 0)
+            {
+                cout << "[sender] gka=pk0*a:" << PK0a << endl;
+            }
             //将点转化成压缩形式
             PK0a.toBytes(hashInBuff.data()); // PK0a=(x,y),取x
             //计算hash，text=i||hashInBuff||R做hash运算,并将结果存到messages[i][0]中
@@ -157,7 +136,10 @@ namespace osuCrypto
             encKeys[i][0] = *((block *)output_tmp);
             //处理另一个Ca/PK0a
             fetmp = C * alpha - PK0a;
-            cout << "===>>sender fetmp:" << fetmp << endl;
+            if (i == 0)
+            {
+                cout << "[sender]C*a-pk0*a:" << fetmp << endl;
+            }
             fetmp.toBytes(hashInBuff.data());
             sha.Reset();
             sha.Update((u8 *)&i, sizeof(i));
@@ -166,32 +148,31 @@ namespace osuCrypto
             //结果存到 encKeys[i][1]
             sha.Final(output_tmp);
             encKeys[i][1] = *((block *)output_tmp);
-            printf("===>>cyc i:%d### ", i);
         }
         ////
         return 0;
     }
-    int NaorPinkasSender::genOTCipher(const vector<array<block, 2>> &encKey,
-                                      const vector<array<block, 2>> &otMessages,
-                                      vector<array<block, 2>> &otMsgCiphers)
-    {
-        u64 encKeySize = encKey.size();
-        u64 otMessagesSize = otMessages.size();
-        // u64 otMsgCiphersSize = otMsgCiphers.size();
-        if (otMsgPairSize != encKeySize || otMsgPairSize != otMessagesSize)
-        {
-            print_error(-3);
-            return -3;
-        }
-        otMsgCiphers.resize(otMsgPairSize);
-        for (int i = 0; i < otMessagesSize; i++)
-        {
-            otMsgCiphers[i][0] = encKey[i][0] ^ otMessages[i][0];
-            otMsgCiphers[i][1] = encKey[i][1] ^ otMessages[i][1];
-        }
-        ////
-        return 0;
-    }
+    // int NaorPinkasSender::genOTCipher(const vector<array<block, 2>> &encKey,
+    //                                   const vector<array<block, 2>> &otMessages,
+    //                                   vector<array<block, 2>> &otMsgCiphers)
+    // {
+    //     u64 encKeySize = encKey.size();
+    //     u64 otMessagesSize = otMessages.size();
+    //     // u64 otMsgCiphersSize = otMsgCiphers.size();
+    //     if (otMsgPairSize != encKeySize || otMsgPairSize != otMessagesSize)
+    //     {
+    //         print_error(-3);
+    //         return -3;
+    //     }
+    //     otMsgCiphers.resize(otMsgPairSize);
+    //     for (int i = 0; i < otMessagesSize; i++)
+    //     {
+    //         otMsgCiphers[i][0] = encKey[i][0] ^ otMessages[i][0];
+    //         otMsgCiphers[i][1] = encKey[i][1] ^ otMessages[i][1];
+    //     }
+    //     ////
+    //     return 0;
+    // }
     /*
     naor-pinkas ot protocal for Receiver
     */
@@ -203,23 +184,17 @@ namespace osuCrypto
     int NaorPinkasReceiver::init(PRNG &rng, const u32 otMsgPairSize,
                                  const u32 otPerMsgBitSize)
     {
+        printf("========recv init==========\n");
         this->otMsgPairSize = otMsgPairSize;
         this->otPerMsgBitSize = otPerMsgBitSize;
-        this->numThreads = 1;
-        this->nSndVals = 2;
         block seed = rng.get<block>();
         this->prng.SetSeed(seed);
-        // block seed = rng.get<block>();
-        // this->prng.SetSeed(seed);
-        // Ecc2mParams params = k233;
-        // this->curve = new EllipticCurve(k233, seed);
-
-        // this->pC.reserve(this->nSndVals);
         return 0;
     }
     int NaorPinkasReceiver::genPK0(u8 *pubParamBuf, const u64 pubParamBufByteSize,
                                    const BitVector &choices, u8 **pk0Buf_out, u64 *pk0BufSize)
     {
+        printf("========recv genPK0==========\n");
         u64 rNum = choices.size();
         cout << "rNum:" << rNum << endl;
         cout << "otMsgPairSize:" << this->otMsgPairSize << endl;
@@ -229,31 +204,25 @@ namespace osuCrypto
             return -4;
         }
         block seed = this->prng.get<block>();
-        // seed = rng.get<block>();
-        // Ecc2mParams params = k233;
-        // EccPoint pk(*curve1), pk1(*curve1), pk2(*curve);
         EllipticCurve curve(k233, seed);
         const EccPoint g = curve.getGenerator();
         u64 fieldElementSize = g.sizeBytes();
+        cout << "[recv]G:" << g << endl;
         //恢复对方发来的A,C两个公钥点
-        this->pC.resize(fieldElementSize * this->nSndVals);
+        this->pC.resize(fieldElementSize * 2);
         memcpy(this->pC.data(), pubParamBuf, pubParamBufByteSize);
         EccPoint A(curve), C(curve);
         A.fromBytes(pubParamBuf + 0 * fieldElementSize);
         C.fromBytes(pubParamBuf + 1 * fieldElementSize);
-        // for (auto u = 0; u < this->nSndVals; u++)
-        // {
-        //     this->pC[u].fromBytes(pubParamBuf + u * fieldElementSize);
-        // }
-        // cout << "receiver >>>>>pc[0]:" << this->pC[0] << endl;
-        // cout << "receiver >>>>>pc[1]:" << this->pC[1] << endl;
+        cout << "[recv]A:" << A << endl;
+        cout << "[recv]C:" << C << endl;
         this->sks.resize(otMsgPairSize);
         vector<EccPoint> pks_sk;
         pks_sk.reserve(otMsgPairSize);
         *pk0BufSize = fieldElementSize * otMsgPairSize;
         this->pk0sBuf.resize(*pk0BufSize);
         *pk0Buf_out = this->pk0sBuf.data();
-        EccBrick bg(g);      //基点G
+        // EccBrick bg(g);      //基点G
         EccPoint pk0(curve); //Ar
         // EccPoint pPK0(*(this->curve)); //Ar
         u64 offset = 0;
@@ -263,10 +232,15 @@ namespace osuCrypto
             tmp_sk.randomize(prng);
             // this->sks.emplace_back(*(this->curve));
             // k1,k2,...,kk
+            if (i == 0)
+            {
+                cout << "[recv]k1:" << tmp_sk << endl;
+            }
+
             this->sks[i].resize(tmp_sk.sizeBytes());
             tmp_sk.toBytes(this->sks[i].data());
             pks_sk.emplace_back(curve); //每次初始化一个ECCPoint
-            pks_sk[i] = bg * tmp_sk;    //生成对应的公钥g^k
+            pks_sk[i] = g * tmp_sk;     //生成对应的公钥g^k
             //根据选择0 or 1，计算A0
             u8 r = choices[i];
             if (r != 0)
@@ -280,39 +254,30 @@ namespace osuCrypto
             pk0.toBytes(this->pk0sBuf.data() + offset);
             if (i == 0)
             {
-                cout << ">>>>>>>>>recv pk0:" << pk0 << endl;
-                // pPK0.fromBytes(this->pk0sBuf.data());
-                // cout << "\n>>>>>>>>>pPK0:" << pPK0 << endl;
+                cout << "[recv]pk0:" << pk0 << endl;
             }
+
             offset += fieldElementSize;
         }
         return 0;
     }
     int NaorPinkasReceiver::getDecKey(vector<block> &decKey)
     {
-        // if (otMsgPairSize != decKey.size())
-        // {
-        //     print_error(-5);
-        //     return -5;
-        // }
+        printf("========recv getDecKey==========\n");
         decKey.resize(this->otMsgPairSize);
-        // resuse this space, not the data of PK0...
         block seed = this->prng.get<block>();
-        // seed = rng.get<block>();
-        // Ecc2mParams params = k233;
-        // EccPoint pk(*curve1), pk1(*curve1), pk2(*curve);
         EllipticCurve curve(k233, seed);
         const EccPoint g = curve.getGenerator();
         EccPoint PK0(curve);
         EccPoint &gka = PK0;
         u64 fieldElementSize = g.sizeBytes();
-        cout << "fieldElementSize:" << fieldElementSize << endl;
+        // cout << "fieldElementSize:" << fieldElementSize << endl;
+        cout << "[recv]2 G:" << g << endl;
         SHA1 sha; //otPerMsgBitSize
         vector<u8> buff(fieldElementSize);
-        // EccBrick ga(pC[0]); // bc==A==g^a
         EccPoint A(curve), C(curve);
         A.fromBytes(this->pC.data() + 0 * fieldElementSize);
-        cout << "============A:" << A << endl;
+        cout << "[recv]A:" << A << endl;
         u8 output_tmp[20];
         for (int i = 0; i < this->otMsgPairSize; i++)
         {
@@ -323,8 +288,10 @@ namespace osuCrypto
             gka.toBytes(buff.data());
             if (i == 0)
             {
-                cout << "====>>recv gka:" << gka << endl;
+                cout << "[recv]k1:" << tmp_sk << endl;
+                cout << "[recv]gka=A*k1:" << gka << endl;
             }
+
             //计算hash，text=i||gka||R作为hash输入
             sha.Reset();
             sha.Update((u8 *)&i, sizeof(i));
@@ -337,24 +304,24 @@ namespace osuCrypto
         }
         return 0;
     }
-    int NaorPinkasReceiver::genOTRecover(const vector<block> &decKey, const BitVector &choices,
-                                         const vector<array<block, 2>> &otMsgCiphers,
-                                         vector<block> &otMsgRecover)
-    {
-        if (decKey.size() != otMsgPairSize || choices.size() != otMsgPairSize ||
-            otMsgCiphers.size() != otMsgPairSize)
-        {
-            print_error(-6);
-            return -6;
-        }
-        otMsgRecover.resize(otMsgPairSize);
-        for (int i = 0; i < otMsgPairSize; i++)
-        {
-            u8 r = choices[i];
-            otMsgRecover[i] = otMsgCiphers[i][r] ^ decKey[i];
-        }
-        return 0;
-    }
+    // int NaorPinkasReceiver::genOTRecover(const vector<block> &decKey, const BitVector &choices,
+    //                                      const vector<array<block, 2>> &otMsgCiphers,
+    //                                      vector<block> &otMsgRecover)
+    // {
+    //     if (decKey.size() != otMsgPairSize || choices.size() != otMsgPairSize ||
+    //         otMsgCiphers.size() != otMsgPairSize)
+    //     {
+    //         print_error(-6);
+    //         return -6;
+    //     }
+    //     otMsgRecover.resize(otMsgPairSize);
+    //     for (int i = 0; i < otMsgPairSize; i++)
+    //     {
+    //         u8 r = choices[i];
+    //         otMsgRecover[i] = otMsgCiphers[i][r] ^ decKey[i];
+    //     }
+    //     return 0;
+    // }
 }
 
 #endif
@@ -366,6 +333,20 @@ namespace oc = osuCrypto;
 #include "naorpinkas.h"
 // using namespace std;
 using namespace oc;
+void check_np99(vector<array<block, 2>> &enckey, vector<block> &deckey, BitVector &rChoices)
+{
+    for (int i = 0; i < rChoices.size(); i++)
+    {
+        int r = rChoices[i];
+        int ret = memcmp((char *)(&(deckey[i])), (char *)(&(enckey[i][r])), 16);
+        if (ret != 0)
+        {
+            printf("===>>error,i:%d\n", i);
+            return;
+        }
+    }
+}
+
 int main(int argc, char **argv)
 {
 #ifdef ECC_TEST
@@ -373,30 +354,47 @@ int main(int argc, char **argv)
     PRNG rng1(toBlock(0x666666));
     block seed = rng1.get<block>();
     block seed1 = rng1.get<block>();
-    EllipticCurve *curve1 = new EllipticCurve(k233, seed1);
-    EllipticCurve *curve = new EllipticCurve(k233, seed);
-    const EccPoint g = curve->getGenerator();
+    EllipticCurve curve1(k233, seed1);
+    EllipticCurve curve(k233, seed);
+    const EccPoint g = curve.getGenerator();
     //alpha也可以定义为长度为1的vector，此时就不需要指针了
     // this->alphaPtr = new EccNumber(*(this->curve), this->prng); //*(this->curve)
-    EccNumber *alphaPtr = new EccNumber(*(curve)); //*(this->curve)
-    alphaPtr->randomize(rng1);
-    EccPoint pk(*curve1), pk1(*curve1), pk2(*curve);
-    pk = g * (*alphaPtr);
+    EccNumber alphaPtr(curve); //*(this->curve)
+    alphaPtr.randomize(rng1);
+    EccPoint pk(curve1), pk1(curve1), pk2(curve);
+    pk = g * (alphaPtr);
+    cout << "===>>pk:" << pk << endl;
+
+    EccNumber a1(curve);
+    EccNumber a2(curve);
+    a1.randomize(rng1);
+    cout << "===>>a1:" << a1 << endl;
+    a2.randomize(rng1);
+    cout << "===>>a2:" << a2 << endl;
+    pk1 = pk * a1;
+    pk2 = pk * a2;
+    cout << "===>>pk1:" << pk1 << endl;
+    cout << "===>>pk2:" << pk2 << endl;
+    EccPoint pk3(curve1), pk4(curve);
+    pk3 = pk1 * a2;
+    pk4 = pk2 * a1;
+    cout << "===>>pk3:" << pk3 << endl;
+    cout << "===>>pk4:" << pk4 << endl;
     for (int i = 0; i < nn; i++)
     {
 
-        alphaPtr->randomize(rng1);
-        pk2 = pk * (*alphaPtr);
+        alphaPtr.randomize(rng1);
+        pk2 = pk * alphaPtr;
         cout << "pk :==" << pk2 << endl;
         cout << "alphaPtr :==" << alphaPtr << endl;
-        cout << ">>>>len:" << alphaPtr->sizeBytes() << endl;
+        cout << ">>>>len:" << alphaPtr.sizeBytes() << endl;
         u8 buf[64];
         pk2.toBytes(buf);
         pk1.fromBytes(buf);
         cout << "pk1:==" << pk1 << endl;
         pk = pk2;
     }
-    delete alphaPtr;
+    // delete alphaPtr;
     // delete curve1;
     // delete curve;
     return 0;
@@ -472,6 +470,8 @@ int main(int argc, char **argv)
     {
         cout << "i:" << i << " " << deckey[i] << endl;
     }
+    printf("===check np99...\n");
+    check_np99(enckey, deckey, rChoices);
     // vector<oc::block> otMsgRecover;
     // flag = npReceiver.genOTRecover(deckey, rChoices, otMsgCipher, otMsgRecover);
     // cout << "6===>>flag:" << flag << endl;

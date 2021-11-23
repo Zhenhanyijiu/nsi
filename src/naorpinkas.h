@@ -28,13 +28,12 @@ namespace osuCrypto
     private:
         u32 otMsgPairSize;
         u32 otPerMsgBitSize;
-        u32 numThreads;
-        u32 nSndVals;
+        // u32 nSndVals;
         PRNG prng;
         // EllipticCurve *curve;
         // EccNumber *alphaPtr;
         vector<u8> alphaPtr;
-        block R;
+        // block R;
         // std::vector<EccPoint> pC;
         // vector<vector<u8>> pC;
         vector<u8> pubPCParamBuf; //A,C param
@@ -61,8 +60,7 @@ namespace osuCrypto
     private:
         u32 otMsgPairSize;
         u32 otPerMsgBitSize;
-        u32 numThreads;
-        u32 nSndVals;
+        // u32 nSndVals;
         PRNG prng;
         // EllipticCurve *curve;
         // std::vector<EccPoint> pC;
