@@ -61,10 +61,18 @@ namespace osuCrypto
         choices2 = choicesWidthInput;
         //8*128为一个单位，不小于实际的输入长度rChoicesSize
         choices2.resize(numBlocks * 128);
+        printf("[iknp recv] choices2 len:%d bytes\n", choices2.sizeBytes());
+        cout << "[iknp recv] choices2 val:" << choices2 << endl;
         //转化为block类型
-        vector<block> choiceBlocks(numBlocks);
+        // vector<block> choiceBlocks(numBlocks);
         // auto choiceBlocks = (block *)(choices2.data());
-        memcpy((char *)choiceBlocks.data(), choices2.data(), numBlocks * 128);
+        auto choiceBlocks = choices2.getArrayView<block>();
+        // .getArrayView<block>();
+        // memcpy((char *)choiceBlocks.data(), choices2.data(), numBlocks * 128);
+        for (int i = 0; i < numBlocks; i++)
+        {
+            cout << choiceBlocks[i] << endl;
+        }
 #if 0 //debug
         for (int i = 0; i < choiceBlocks.size(); i++)
         {
