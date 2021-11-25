@@ -481,14 +481,24 @@ namespace oc = osuCrypto;
 #include "iknpote.h"
 // using namespace std;
 using namespace oc;
-int main(int argc, char *argv[])
+void check_iknp(vector<array<block, 2>> &enckey, vector<block> &deckey, BitVector &rChoices)
 {
-    int width = 100;
-    if (argc != 1)
+    printf("enckey lens:%ld,deckey lens:%ld,rChoices lens:%ld\n",
+           enckey.size(), deckey.size(), rChoices.size());
+    for (int i = 0; i < rChoices.size(); i++)
     {
-        width = atoi(argv[1]);
+        int r = rChoices[i];
+        int ret = memcmp((char *)(&(deckey[i])), (char *)(&(enckey[i][r])), 16);
+        if (ret != 0)
+        {
+            printf("===>>error,i:%d\n", i);
+            return;
+        }
     }
-    oc::PRNG rng(oc::toBlock(0x112233));
+}
+int test_iknp(int width)
+{
+    oc::PRNG rng(oc::toBlock(0x1122334455));
     //iknp 接收者
     oc::IknpOtExtReceiver iknpReceiver;
     iknpReceiver.init(rng);
@@ -519,12 +529,13 @@ int main(int argc, char *argv[])
         printf("1====error:%d\n", fg);
         return -1;
     }
-    for (int i = 0; i < recoverMsgWidthOutput.size(); i++)
+    // for (int i = 0; i < recoverMsgWidthOutput.size(); i++)
+    for (int i = 0; i < 4; i++)
     {
         cout << "i:" << i << "," << recoverMsgWidthOutput[i] << endl;
     }
     // printOTMsgSingle(recoverMsgWidthOutput);
-    cout << "===choicesWidthInput:" << choicesWidthInput << endl;
+    // cout << "===choicesWidthInput:" << choicesWidthInput << endl;
     //iknp sender
     vector<array<oc::block, 2>> encMsgOutput(width);
     fg = iknpSender.getEncMsg(uBuffOutput, encMsgOutput);
@@ -533,8 +544,26 @@ int main(int argc, char *argv[])
         printf("2====error:%d\n", fg);
         return -1;
     }
-    // printOTMsg(encMsgOutput);
-    // check_recover(encMsgOutput, choicesWidthInput, recoverMsgWidthOutput);
+    for (int i = 0; i < 4; i++)
+    {
+        cout << "i:" << i << ",0:" << encMsgOutput[i][0] << endl;
+        cout << "i:" << i << ",1:" << encMsgOutput[i][1] << endl;
+    }
+    check_iknp(encMsgOutput, recoverMsgWidthOutput, choicesWidthInput);
+    // int *p = new (int);内存泄漏测试语句
+    return 0;
+}
+int main(int argc, char *argv[])
+{
+    int width = 100;
+    if (argc != 1)
+    {
+        width = atoi(argv[1]);
+    }
+    for (int i = 0; i < 10; i++)
+    {
+        test_iknp(width);
+    }
     return 0;
 }
 #endif
