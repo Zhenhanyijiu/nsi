@@ -549,7 +549,7 @@ int test_iknp(int width)
         cout << "i:" << i << ",0:" << encMsgOutput[i][0] << endl;
         cout << "i:" << i << ",1:" << encMsgOutput[i][1] << endl;
     }
-    check_iknp(encMsgOutput, recoverMsgWidthOutput, choicesWidthInput);
+    // check_iknp(encMsgOutput, recoverMsgWidthOutput, choicesWidthInput);
     // int *p = new (int);内存泄漏测试语句
     return 0;
 }
@@ -560,7 +560,7 @@ int main(int argc, char *argv[])
     {
         width = atoi(argv[1]);
     }
-    for (int i = 0; i < 10; i++)
+    for (int i = 0; i < 1; i++)
     {
         test_iknp(width);
     }

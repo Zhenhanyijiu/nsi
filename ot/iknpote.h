@@ -28,7 +28,8 @@ namespace osuCrypto
         int getEncKeyFromNpot(u8 *pk0Buf, const u64 pk0BufSize);
         //输入的bitvector为choicesWidth,外部初始化大小
         int genRecoverMsg(const BitVector &choicesWidthInput,
-                          vector<block> &recoverMsgWidthOutput, vector<block> &uBuffOutput);
+                          vector<block> &recoverMsgWidthOutput,
+                          vector<block> &uBuffOutput);
     };
     /*************IknpOtExtSender*************/
     //iknp-ot-ext 发送方结构
@@ -50,7 +51,8 @@ namespace osuCrypto
         int genPK0FromNpot(u8 *pubParamBuf, const u64 pubParamBufByteSize,
                            u8 **pk0Buf, u64 *pk0BufSize);
         //uBuffInput对方发送过来的，作为输入，encMsgOutput为输出，大小在外部初始化
-        int getEncMsg(const vector<block> &uBuffInput, vector<array<block, 2>> &encMsgOutput);
+        int getEncMsg(const vector<block> &uBuffInput,
+                      vector<array<block, 2>> &encMsgOutput);
     };
 
 }

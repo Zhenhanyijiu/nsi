@@ -95,7 +95,7 @@ g++ -O3 -DNDEBUG -O2 -g -O0 -ffunction-sections -Wall -Wfatal-errors \
 -maes -msse2 -msse3 -msse4.1 -mpclmul -std=c++11 -pthread \
 -DNO_INTEL_ASM_SHA1=1 -DIKNP_TEST \
 -I ../mPSI \
--I ../src \
+-I ../ot \
 -I ../mPSI/frontend \
 -I ../mPSI/cryptoTools \
 -I ../mPSI/thirdparty/linux/boost/includes \
@@ -118,7 +118,7 @@ g++ -O3 -DNDEBUG -O2 -g -O0 -ffunction-sections -Wall -Wfatal-errors \
 ../mPSI/libOPRF/Hashing/*.cpp \
 ../mPSI/libPaXoS/ObliviousDictionary.cpp \
 ../mPSI/libPaXoS/gf2e_mat_solve.cpp \
-../src/*.cpp \
+../ot/*.cpp \
 ../mPSI/frontend/*.cpp \
 ../mPSI/libPaXoS/xxHash/libxxhash.a \
 ../libdev/lib/liblinbox.a \

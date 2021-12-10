@@ -38,7 +38,7 @@ namespace osuCrypto
         EllipticCurve curve(k233, seed);
         EccNumber alpha(curve);
         alpha.randomize(this->prng);
-        cout << "[sender]我是a：" << alpha << endl;
+        // cout << "[sender]我是a：" << alpha << endl;
         this->alphaPtr.resize(alpha.sizeBytes());
         alpha.toBytes(this->alphaPtr.data());
         return 0;
@@ -61,7 +61,7 @@ namespace osuCrypto
         EccNumber alpha(curve);
         alpha.fromBytes(this->alphaPtr.data());
         pC[0] = g * alpha; // A=alpha*G
-        cout << "[sender]A=g^a:" << pC[0] << endl;
+        // cout << "[sender]A=g^a:" << pC[0] << endl;
         pC[0].toBytes(this->pubPCParamBuf.data());
         EccNumber tmp(curve);
         for (u64 u = 1; u < 2; u++)
@@ -69,7 +69,7 @@ namespace osuCrypto
             pC.emplace_back(curve);
             tmp.randomize(this->prng);
             pC[u] = g * tmp; // C=tmp*G
-            cout << "[sender]C=g^c:" << pC[u] << endl;
+            // cout << "[sender]C=g^c:" << pC[u] << endl;
             pC[u].toBytes(this->pubPCParamBuf.data() + u * fieldElementSize);
         }
         *pubParamBuf = this->pubPCParamBuf.data();
@@ -113,17 +113,21 @@ namespace osuCrypto
         {
             //对于第i对消息，获取pPK0==k*G
             pPK0.fromBytes(pk0Buf + i * fieldElementSize);
+#if 0
             if (i == 0)
             {
                 cout << "[sender]pk0:" << pPK0 << endl;
                 cout << "[sender]a:" << alpha << endl;
             }
+#endif
             //计算a*pPK0
             PK0a = pPK0 * alpha;
+#if 0
             if (i == 0)
             {
                 cout << "[sender] gka=pk0*a:" << PK0a << endl;
             }
+#endif
             //将点转化成压缩形式
             PK0a.toBytes(hashInBuff.data()); // PK0a=(x,y),取x
             //计算hash，text=i||hashInBuff||R做hash运算,并将结果存到messages[i][0]中
@@ -136,10 +140,12 @@ namespace osuCrypto
             encKeys[i][0] = *((block *)output_tmp);
             //处理另一个Ca/PK0a
             fetmp = C * alpha - PK0a;
+#if 0
             if (i == 0)
             {
                 cout << "[sender]C*a-pk0*a:" << fetmp << endl;
             }
+#endif
             fetmp.toBytes(hashInBuff.data());
             sha.Reset();
             sha.Update((u8 *)&i, sizeof(i));
@@ -214,8 +220,10 @@ namespace osuCrypto
         EccPoint A(curve), C(curve);
         A.fromBytes(pubParamBuf + 0 * fieldElementSize);
         C.fromBytes(pubParamBuf + 1 * fieldElementSize);
+#if 0
         cout << "[recv]A:" << A << endl;
         cout << "[recv]C:" << C << endl;
+#endif
         this->sks.resize(otMsgPairSize);
         vector<EccPoint> pks_sk;
         pks_sk.reserve(otMsgPairSize);
@@ -230,12 +238,14 @@ namespace osuCrypto
         {
             EccNumber tmp_sk(curve);
             tmp_sk.randomize(prng);
-            // this->sks.emplace_back(*(this->curve));
-            // k1,k2,...,kk
+// this->sks.emplace_back(*(this->curve));
+// k1,k2,...,kk
+#if 0
             if (i == 0)
             {
                 cout << "[recv]k1:" << tmp_sk << endl;
             }
+#endif
 
             this->sks[i].resize(tmp_sk.sizeBytes());
             tmp_sk.toBytes(this->sks[i].data());
@@ -252,10 +262,12 @@ namespace osuCrypto
                 pk0 = pks_sk[i];
             }
             pk0.toBytes(this->pk0sBuf.data() + offset);
+#if 0
             if (i == 0)
             {
                 cout << "[recv]pk0:" << pk0 << endl;
             }
+#endif
 
             offset += fieldElementSize;
         }
@@ -271,13 +283,17 @@ namespace osuCrypto
         EccPoint PK0(curve);
         EccPoint &gka = PK0;
         u64 fieldElementSize = g.sizeBytes();
-        // cout << "fieldElementSize:" << fieldElementSize << endl;
+// cout << "fieldElementSize:" << fieldElementSize << endl;
+#if 0
         cout << "[recv]2 G:" << g << endl;
+#endif
         SHA1 sha; //otPerMsgBitSize
         vector<u8> buff(fieldElementSize);
         EccPoint A(curve), C(curve);
         A.fromBytes(this->pC.data() + 0 * fieldElementSize);
+#if 0
         cout << "[recv]A:" << A << endl;
+#endif
         u8 output_tmp[20];
         for (int i = 0; i < this->otMsgPairSize; i++)
         {
@@ -286,11 +302,13 @@ namespace osuCrypto
             // now compute g ^(a * k) = (g^a)^k=A^k
             gka = A * tmp_sk; //计算恢复消息的
             gka.toBytes(buff.data());
+#if 0
             if (i == 0)
             {
                 cout << "[recv]k1:" << tmp_sk << endl;
                 cout << "[recv]gka=A*k1:" << gka << endl;
             }
+#endif
 
             //计算hash，text=i||gka||R作为hash输入
             sha.Reset();
@@ -453,7 +471,8 @@ int main(int argc, char **argv)
     }
     flag = npSender.getEncKey(pk0buf, pk0bufSize, enckey);
     cout << "3===>>flag:" << flag << endl;
-    for (int i = 0; i < enckey.size(); i++)
+    // for (int i = 0; i < enckey.size(); i++)
+    for (int i = 0; i < 2; i++)
     {
         cout << "i:" << i << " " << enckey[i][0] << endl;
         cout << "i:" << i << " " << enckey[i][1] << endl;
@@ -466,7 +485,8 @@ int main(int argc, char **argv)
     vector<block> deckey;
     flag = npReceiver.getDecKey(deckey);
     cout << "5===>>flag:" << flag << endl;
-    for (int i = 0; i < deckey.size(); i++)
+    // for (int i = 0; i < deckey.size(); i++)
+    for (int i = 0; i < 2; i++)
     {
         cout << "i:" << i << " " << deckey[i] << endl;
     }
